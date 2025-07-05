@@ -40,6 +40,11 @@ func run(pass *analysis.Pass) (any, error) {
 			return
 		}
 
+		// Skip string literal check for viper calls in config package (wrapper functions)
+		if isViperCall(call) && pass.Pkg.Name() == "config" {
+			return
+		}
+
 		// Extract the config key from the first argument
 		if len(call.Args) == 0 {
 			return
@@ -87,6 +92,19 @@ func isConfigCall(call *ast.CallExpr) bool {
 				case "GetString", "GetBool", "GetStringSlice":
 					return true
 				}
+			}
+		}
+	}
+	return false
+}
+
+// isViperCall checks if the function call is a viper.Get* call
+func isViperCall(call *ast.CallExpr) bool {
+	if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+		if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "viper" {
+			switch sel.Sel.Name {
+			case "GetString", "GetBool", "GetStringSlice":
+				return true
 			}
 		}
 	}
